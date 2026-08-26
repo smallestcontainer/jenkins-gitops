@@ -1,0 +1,23 @@
+jenkins:
+  systemMessage: "The sky is cloudless over all Spain!"
+  numExecutors: 2
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+      - id: kindred
+        password: admin
+  authorizationStrategy:
+    loggedInUsersCanDoAnything:
+      allowAnonymousRead: false
+  slaveAgentPort: 50000
+  
+unclassified:
+  location:
+    url: "http://localhost:8080"
+  
+tool:
+  git:
+    installations:
+    - name: git
+      home: /usr/local/bin/git
