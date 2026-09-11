@@ -1,23 +1,46 @@
 jenkins:
   systemMessage: "The sky is cloudless over all Spain!"
   numExecutors: 2
+
   securityRealm:
     local:
       allowsSignup: false
       users:
-      - id: kindred
-        password: admin
+      - id: "${JENKINS_ADMIN_USERNAME}"
+        password: "${JENKINS_ADMIN_PASSWORD}"
+
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
-  slaveAgentPort: 50000
   
+  slaveAgentPort: 50000
+
+credentials:
+  system:
+    domainCredentials:
+    - credentials:
+      - githubApp:
+          id: 'github-app'
+          appID: 4906085
+          description: Github app for CI/CD
+          privateKey: "${FILE:/run/secrets/github-app-key.pem}"
+
 unclassified:
   location:
     url: "http://localhost:8080"
+  githubpluginconfig:
+    configs:
+    - name: 'FastAPI app'
+      apiUrl: https://api.github.com
+      credentialsId: "github-app"
+      manageHooks: false
+      
   
 tool:
   git:
     installations:
     - name: git
-      home: /usr/local/bin/git
+      home: /bin/git
+
+jobs:
+  - file: /var/jenkins_home/pipeline.groovy

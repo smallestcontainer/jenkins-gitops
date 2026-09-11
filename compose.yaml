@@ -1,0 +1,25 @@
+services:
+  jenkins:
+    build: jenkins/
+    container_name: pet-jenkins
+    env_file:
+    - .env
+    - ./jenkins/secrets/.env-admin
+    ports:
+    - "8080:8080"
+    - "50000:50000"
+    volumes:
+    - jenkins_home:/var/jenkins_home
+    - ./jenkins/jenkins.yaml:/var/jenkins_home/jenkins.yaml
+    secrets:
+    - github-app-key.pem
+    
+volumes:
+  jenkins_home:
+    name: "pet-jenkins_home"
+    labels:
+      description: Jenkins build history and workspaces
+  
+secrets:
+  github-app-key.pem:
+    file: './jenkins/secrets/github-app-key.pem'
