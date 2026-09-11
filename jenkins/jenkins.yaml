@@ -27,14 +27,13 @@ credentials:
 
 unclassified:
   location:
-    url: "http://localhost:8080"
+    url: "${JENKINS_URL}"
   githubpluginconfig:
     configs:
     - name: 'FastAPI app'
       apiUrl: https://api.github.com
       credentialsId: "github-app"
       manageHooks: false
-      
   
 tool:
   git:

@@ -3,11 +3,11 @@ multibranchPipelineJob('image-jenkins') {
 
     branchSources {
         github {
-            id('fastapi-app') // Stable, unique identifier
+            id('fastapi-app')
             scanCredentialsId('github-app')
             repoOwner('smallestcontainer')
             repository('basic-web-app')
-            apiUri('https://api.github.com') // Must use HTTPS if specified
+            apiUri('https://api.github.com')
         }
     }
 
@@ -20,12 +20,6 @@ multibranchPipelineJob('image-jenkins') {
     orphanedItemStrategy {
         discardOldItems {
             numToKeep(1)
-        }
-    }
-
-    triggers {
-        periodicFolderTrigger {
-            interval('5m') // Explicit 5-minute interval
         }
     }
 }

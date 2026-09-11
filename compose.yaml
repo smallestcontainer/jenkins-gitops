@@ -13,13 +13,30 @@ services:
     - ./jenkins/jenkins.yaml:/var/jenkins_home/jenkins.yaml
     secrets:
     - github-app-key.pem
+    networks:
+      - net-cli
     
+  smee:
+    build: smee/
+    container_name: smee-client
+    environment:
+      - SMEE_TOKEN=${SMEE_TOKEN}
+      - JENKINS_URL=${JENKINS_URL}
+    depends_on:
+      - jenkins
+    networks:
+    - net-cli
+
 volumes:
   jenkins_home:
     name: "pet-jenkins_home"
     labels:
       description: Jenkins build history and workspaces
   
+networks:
+  net-cli:
+    driver: bridge
+
 secrets:
   github-app-key.pem:
     file: './jenkins/secrets/github-app-key.pem'
