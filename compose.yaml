@@ -19,9 +19,11 @@ services:
   smee:
     build: smee/
     container_name: smee-client
-    environment:
-      - SMEE_TOKEN=${SMEE_TOKEN}
-      - JENKINS_URL=${JENKINS_URL}
+    #environment:
+     # - SMEE_TOKEN=${SMEE_TOKEN}
+      #- JENKINS_URL=${JENKINS_URL}
+    env_file:
+    - .env
     depends_on:
       - jenkins
     networks:

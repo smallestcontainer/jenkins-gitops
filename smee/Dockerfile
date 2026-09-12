@@ -1,9 +1,3 @@
-FROM node:trixie-slim
+FROM deltaprojects/smee-client:latest
 
-WORKDIR /app
-
-RUN npm install --save smee-client dotenv
-
-COPY index.js .
-
-CMD [ "node", "index.js" ]
+CMD [ "smee-client", "-u", "https://smee.io/Ijdfx75tfyFXpmqA", "-t", "http://jenkins:8080/github-webhook/" ]

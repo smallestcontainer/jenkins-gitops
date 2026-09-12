@@ -27,7 +27,7 @@ credentials:
 
 unclassified:
   location:
-    url: "${JENKINS_URL}"
+    url: "http://jenkins.:8080"
   githubpluginconfig:
     configs:
     - name: 'FastAPI app'
