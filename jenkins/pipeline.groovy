@@ -7,7 +7,6 @@ multibranchPipelineJob('image-jenkins') {
             scanCredentialsId('github-app')
             repoOwner('smallestcontainer')
             repository('basic-web-app')
-            apiUri('https://api.github.com')
         }
     }
 

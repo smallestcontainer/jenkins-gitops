@@ -3,7 +3,6 @@ services:
     build: jenkins/
     container_name: pet-jenkins
     env_file:
-    - .env
     - ./jenkins/secrets/.env-admin
     ports:
     - "8080:8080"
@@ -17,17 +16,16 @@ services:
       - net-cli
     
   smee:
-    build: smee/
+    image: deltaprojects/smee-client:latest
     container_name: smee-client
-    #environment:
-     # - SMEE_TOKEN=${SMEE_TOKEN}
-      #- JENKINS_URL=${JENKINS_URL}
-    env_file:
-    - .env
+    environment:
+    - SMEE_TOKEN=${SMEE_TOKEN}
+    - JENKINS_URL=${JENKINS_URL}
     depends_on:
       - jenkins
     networks:
     - net-cli
+    command: smee-client -u https://smee.io/${SMEE_TOKEN} -t ${JENKINS_URL}/github-webhook/
 
 volumes:
   jenkins_home:
