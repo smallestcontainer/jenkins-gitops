@@ -5,8 +5,8 @@ multibranchPipelineJob('image-jenkins') {
         github {
             id('fastapi-app')
             scanCredentialsId('github-app')
+            repository('url-shortener')
             repoOwner('smallestcontainer')
-            repository('basic-web-app')
         }
     }
 

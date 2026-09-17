@@ -3,6 +3,7 @@ services:
     build: jenkins/
     container_name: pet-jenkins
     env_file:
+    - .env
     - ./jenkins/secrets/.env-admin
     ports:
     - "8080:8080"
@@ -10,8 +11,11 @@ services:
     volumes:
     - jenkins_home:/var/jenkins_home
     - ./jenkins/jenkins.yaml:/var/jenkins_home/jenkins.yaml
+    - /var/run/docker.sock:/var/run/docker.sock
     secrets:
     - github-app-key.pem
+    group_add:
+    - "989"
     networks:
       - net-cli
     
