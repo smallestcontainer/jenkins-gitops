@@ -14,6 +14,7 @@ services:
     - /var/run/docker.sock:/var/run/docker.sock
     secrets:
     - github-app-key.pem
+    - dockerhub.token
     group_add:
     - "989"
     networks:
@@ -44,3 +45,5 @@ networks:
 secrets:
   github-app-key.pem:
     file: './jenkins/secrets/github-app-key.pem'
+  dockerhub.token:
+    file: './jenkins/secrets/dockerhub.token'
