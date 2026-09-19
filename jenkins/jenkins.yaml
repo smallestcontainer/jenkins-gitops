@@ -24,6 +24,10 @@ credentials:
           appID: 4906085
           description: Github app for CI/CD
           privateKey: "${FILE:/run/secrets/github-app-key.pem}"
+      - usernamePassword:
+          id: 'dockerhub'
+          username: "${DOCKERHUB_USERNAME}"
+          password: "${FILE:/run/secrets/dockerhub.token}"
 
 unclassified:
   location:
