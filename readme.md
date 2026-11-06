@@ -24,18 +24,25 @@ flowchart TD
     smee -->|smee-client forwards to /github-webhook/| jenkins[Jenkins multibranch job]
     jenkins --> pipeline[Jenkinsfile from url-shortener]
     pipeline -.->|GitHub check on the commit / PR| repo
-    pipeline --> branch{master branch?}
-    branch -->|yes| hub[(Docker Hub)]
+    pipeline --> branch{release branch?}
     branch -->|no| done([Checks only])
-    hub --> cd[k3d-gitops: Kubernetes cluster]
+    branch -->|yes: push image| hub[(Docker Hub)]
+    branch -->|yes: commit new image tag| cd[GitHub: k3d-gitops]
+    cd -->|synced by ArgoCD| k8s[k3d cluster]
+    hub -->|pull image| k8s
 ```
 
 Every push to a branch and every pull request in `url-shortener` triggers the pipeline.
 GitHub delivers the webhook through [smee.io](https://smee.io), so Jenkins does not have
 to be reachable from the internet. The result is reported back as a GitHub check:
-a red check blocks the pull request until the issues are fixed. Only builds of
-`master` publish the image to Docker Hub, from where
-[k3d-gitops](https://github.com/smallestcontainer/k3d-gitops) deploys it to Kubernetes.
+a red check blocks the pull request until the issues are fixed.
+
+Builds of the release branch (set in the `when { branch … }` conditions of the
+`Jenkinsfile`) go further: Jenkins pushes the image to Docker Hub, tagged with the short
+commit hash, then updates that tag in `kustomization.yaml` of
+[k3d-gitops](https://github.com/smallestcontainer/k3d-gitops) with `kustomize edit set image`
+and pushes the commit to its `master`. ArgoCD picks up the commit and rolls out the new
+image to the cluster.
 
 ### Repository structure
 
@@ -64,7 +71,7 @@ jenkins-gitops/
 
 | ID | Type | Source |
 |---|---|---|
-| `github-app` | GitHub App | `appID` in `jenkins.yaml` + `secrets/github-app-key.pem` |
+| `github-app` | GitHub App | `appID` in `jenkins.yaml` + `secrets/github-app-key.pem`; used for repository scans, GitHub checks and pushing image tags to `k3d-gitops` |
 | `dockerhub` | Username / password | `DOCKERHUB_USERNAME` + `secrets/dockerhub.token` |
 
 ## Installation
@@ -72,8 +79,9 @@ jenkins-gitops/
 ### Requirements
 
 - Docker Engine with the Compose plugin
-- A GitHub App installed on the `url-shortener` repository with permissions for contents
-  (read), checks (read/write), pull requests (read) and commit statuses
+- A GitHub App installed on the `url-shortener` and `k3d-gitops` repositories with
+  permissions for contents (read/write: Jenkins pushes image tags to `k3d-gitops`),
+  checks (read/write), pull requests (read) and commit statuses
 - A Docker Hub account and an access token
 - A smee.io channel (open https://smee.io/new and copy the channel ID)
 
