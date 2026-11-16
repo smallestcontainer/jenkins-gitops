@@ -21,7 +21,7 @@ This repository is the CI part of a GitOps pipeline:
 flowchart TD
     dev([Developer]) -->|push to a branch / pull request| repo[GitHub: url-shortener]
     repo -->|webhook| smee[smee.io channel]
-    smee -->|smee-client forwards to /github-webhook/| jenkins[Jenkins multibranch job]
+    smee -->|"forwarded by the smee service (compose.yaml)"| jenkins["Jenkins multibranch job (pipeline.groovy)"]
     jenkins --> pipeline[Jenkinsfile from url-shortener]
     pipeline -.->|GitHub check on the commit / PR| repo
     pipeline --> branch{release branch?}
@@ -41,7 +41,7 @@ Builds of the release branch (set in the `when { branch … }` conditions of the
 `Jenkinsfile`) go further: Jenkins pushes the image to Docker Hub, tagged with the short
 commit hash, then updates that tag in `kustomization.yaml` of
 [k3d-gitops](https://github.com/smallestcontainer/k3d-gitops) with `kustomize edit set image`
-and pushes the commit to its `master`. ArgoCD picks up the commit and rolls out the new
+and pushes the commit to the branch ArgoCD tracks. ArgoCD picks up the commit and rolls out the new
 image to the cluster.
 
 ### Repository structure
@@ -50,7 +50,9 @@ image to the cluster.
 jenkins-gitops/
 ├── compose.yaml            # Jenkins + smee webhook relay
 ├── .env                    # Non-secret settings (in .gitignore)
+├── .gitignore
 └── jenkins/
+    ├── .dockerignore       # Keeps secrets/ out of the image build context
     ├── Dockerfile          # Jenkins image with the Docker CLI and bundled plugins
     ├── plugins.txt         # Plugin list with pinned versions, installed at build time
     ├── jenkins.yaml        # Configuration as Code (JCasC): users, credentials, GitHub
@@ -60,19 +62,20 @@ jenkins-gitops/
 
 ### Ports and storage
 
-| Setting | Value |
+| Setting | Where it is set |
 |---|---|
-| Web UI | `8080` |
-| Inbound agent port | `50000` |
-| Home directory volume | `pet-jenkins_home` (build history and workspaces) |
-| Network | `net-cli` (bridge, shared by `jenkins` and `smee`) |
+| Web UI and inbound agent ports | `ports` of the Jenkins service in `compose.yaml` |
+| Home directory volume (build history and workspaces) | `volumes` in `compose.yaml` |
+| Bridge network shared by Jenkins and smee | `networks` in `compose.yaml` |
 
 ### Credentials created in Jenkins
 
-| ID | Type | Source |
-|---|---|---|
-| `github-app` | GitHub App | `appID` in `jenkins.yaml` + `secrets/github-app-key.pem`; used for repository scans, GitHub checks and pushing image tags to `k3d-gitops` |
-| `dockerhub` | Username / password | `DOCKERHUB_USERNAME` + `secrets/dockerhub.token` |
+| Credential | Type | Source | Used for |
+|---|---|---|---|
+| GitHub App | GitHub App | `appID` in `jenkins.yaml` + `secrets/github-app-key.pem` | Repository scans, GitHub checks, pushing image tags to `k3d-gitops` |
+| Docker Hub | Username / password | `DOCKERHUB_USERNAME` from `.env` + `secrets/dockerhub.token` | Publishing the image |
+
+Credential IDs are set in `jenkins.yaml` and referenced by the `url-shortener` `Jenkinsfile`.
 
 ## Installation
 
@@ -100,14 +103,11 @@ CASC_JENKINS_CONFIG=/var/jenkins_home/jenkins.yaml
 SMEE_TOKEN=<your smee.io channel ID>
 JENKINS_URL=http://jenkins:8080
 
-REPOSITORY_OWNER=smallestcontainer
-REPOSITORY_NAME=url-shortener
-
 DOCKERHUB_USERNAME=<your Docker Hub username>
 ```
 
-`JENKINS_URL` must be reachable from the `smee` container, so use the Compose
-service name (`jenkins`), not `localhost`.
+`JENKINS_URL` must be reachable from the smee container, so use the Jenkins service
+name from `compose.yaml`, not `localhost`.
 
 ### 3. Create the secret files
 
@@ -128,24 +128,25 @@ openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt \
 # Docker Hub access token
 printf '%s' '<docker hub token>' > jenkins/secrets/dockerhub.token
 
-chmod 600 jenkins/secrets/*
+# `*` skips dotfiles, so .env-admin is listed explicitly
+chmod 600 jenkins/secrets/* jenkins/secrets/.env-admin
 ```
 
-Both `.env` and `jenkins/secrets/` are in `.gitignore` and excluded from the Docker
-build context.
+Both `.env` and `jenkins/secrets/` are in `.gitignore`. The secrets reach Jenkins only
+as Compose secrets mounted under `/run/secrets/`: `jenkins/.dockerignore` keeps
+`secrets/` out of the image build context, and `.env` lies outside it.
 
 ### 4. Adjust host-specific values
 
-- **docker group ID.** `compose.yaml` adds the container to group `989` so the
-  `jenkins` user can access the Docker socket. Check the GID on your host
-  and replace it if needed:
+- **docker group ID.** `group_add` in `compose.yaml` adds the container to the host's
+  `docker` group so Jenkins can access the Docker socket. Set it to the GID on your host:
   ```bash
   getent group docker | cut -d: -f3
   ```
   The same GID is set in the Trivy stage of the `url-shortener` `Jenkinsfile`.
-- **GitHub App ID.** `appID` in `jenkins/jenkins.yaml` is `4906085`. Replace it with
-  your app's ID.
-- **Repository.** `repoOwner` and `repository` are set in `jenkins/pipeline.groovy`.
+- **GitHub App ID.** Set `appID` in `jenkins/jenkins.yaml` to your app's ID.
+- **Repository.** Set `repoOwner` and `repository` in `jenkins/pipeline.groovy` to the
+  application repository.
 
 ### 5. Configure the GitHub webhook
 
@@ -161,14 +162,15 @@ In the webhook settings of the GitHub App (or the repository), set:
 docker compose up -d --build
 ```
 
-Open http://localhost:8080 and log in with the credentials from `.env-admin`.
-The `Image Jenkins Multibranch` job is created automatically and scans the repository.
+Open the Jenkins web UI on the port published in `compose.yaml` and log in with the
+credentials from `.env-admin`. The multibranch job from `pipeline.groovy` is created
+automatically and scans the repository.
 
 ## Removal
 
 ```bash
 docker compose down              # remove containers and network (build history is kept in the volume)
-docker compose down -v --rmi local   # also delete the pet-jenkins_home volume and the built Jenkins image
+docker compose down -v --rmi local   # also delete the Jenkins home volume and the built Jenkins image
 ```
 
 Remove the webhook from the GitHub App (or repository) settings and, if no longer
